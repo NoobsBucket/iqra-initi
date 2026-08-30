@@ -25,6 +25,7 @@ type Enrollment struct {
 
 type Store interface {
 	Enroll(ctx context.Context, e *Enrollment) (*Enrollment, error)
+	GetAll(ctx context.Context) ([]*Enrollment, error)
 	GetByUser(ctx context.Context, userID string) ([]*Enrollment, error)
 	GetByID(ctx context.Context, id string) (*Enrollment, error)
 	GetByCourse(ctx context.Context, courseID string) ([]*Enrollment, error)
@@ -53,6 +54,34 @@ func (s *store) Enroll(ctx context.Context, e *Enrollment) (*Enrollment, error) 
 		&e.Status, &e.Progress, &e.PaymentStatus, &e.PaymentMethod, &e.EnrolledAt, &e.CompletedAt, &e.UpdatedAt,
 	)
 	return e, err
+}
+
+func (s *store) GetAll(ctx context.Context) ([]*Enrollment, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT uc.id, uc.user_id, uc.course_id, uc.full_name, uc.whatsapp, uc.notes,
+		       uc.status, uc.progress, uc.payment_status, uc.payment_method,
+		       uc.enrolled_at, uc.completed_at, uc.updated_at
+		FROM user_courses uc
+		ORDER BY uc.enrolled_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var enrollments []*Enrollment
+	for rows.Next() {
+		e := &Enrollment{}
+		if err := rows.Scan(
+			&e.ID, &e.UserID, &e.CourseID, &e.FullName, &e.Whatsapp, &e.Notes,
+			&e.Status, &e.Progress, &e.PaymentStatus, &e.PaymentMethod,
+			&e.EnrolledAt, &e.CompletedAt, &e.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		enrollments = append(enrollments, e)
+	}
+	return enrollments, rows.Err()
 }
 
 func (s *store) GetByUser(ctx context.Context, userID string) ([]*Enrollment, error) {

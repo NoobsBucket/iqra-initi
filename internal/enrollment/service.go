@@ -13,6 +13,7 @@ var (
 
 type service interface {
 	EnrollUser(ctx context.Context, userID, courseID, fullName, whatsapp, notes string) (*Enrollment, error)
+	GetAllEnrollments(ctx context.Context) ([]*Enrollment, error)
 	GetUserEnrollments(ctx context.Context, userID string) ([]*Enrollment, error)
 	GetEnrollment(ctx context.Context, id string) (*Enrollment, error)
 	GetCourseEnrollments(ctx context.Context, courseID string) ([]*Enrollment, error)
@@ -54,6 +55,10 @@ func (s *Service) EnrollUser(ctx context.Context, userID, courseID, fullName, wh
 		return nil, fmt.Errorf("enroll: %w", err)
 	}
 	return result, nil
+}
+
+func (s *Service) GetAllEnrollments(ctx context.Context) ([]*Enrollment, error) {
+	return s.store.GetAll(ctx)
 }
 
 func (s *Service) GetUserEnrollments(ctx context.Context, userID string) ([]*Enrollment, error) {

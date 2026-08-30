@@ -9,6 +9,7 @@ import (
 	"github.com/NoobsBucket/iqra-initi/internal/blog"
 	"github.com/NoobsBucket/iqra-initi/internal/categories"
 	"github.com/NoobsBucket/iqra-initi/internal/courses"
+	"github.com/NoobsBucket/iqra-initi/internal/contact"
 	"github.com/NoobsBucket/iqra-initi/internal/enrollment"
 	"github.com/NoobsBucket/iqra-initi/internal/lessons"
 	"github.com/NoobsBucket/iqra-initi/internal/mailer"
@@ -16,6 +17,7 @@ import (
 	"github.com/NoobsBucket/iqra-initi/internal/products"
 	"github.com/NoobsBucket/iqra-initi/internal/reviews"
 	"github.com/NoobsBucket/iqra-initi/internal/settings"
+	"github.com/NoobsBucket/iqra-initi/internal/users"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -59,6 +61,8 @@ func (app *application) mount() http.Handler {
 	blogStore := blog.NewStore(app.db)
 	lessonStore := lessons.NewStore(app.db)
 	enrollmentStore := enrollment.NewStore(app.db)
+	userStore := users.NewStore(app.db)
+	contactStore := contact.NewStore(app.db)
 	notifStore := notifications.NewStore(app.db)
 	settingsStore := settings.NewStore(app.db)
 
@@ -72,6 +76,8 @@ func (app *application) mount() http.Handler {
 	blogService := blog.NewService(blogStore)
 	lessonService := lessons.NewService(lessonStore)
 	enrollmentService := enrollment.NewService(enrollmentStore)
+	userService := users.NewService(userStore)
+	contactService := contact.NewService(contactStore)
 	notifService := notifications.NewService(notifStore)
 	settingsService := settings.NewService(settingsStore)
 
@@ -83,6 +89,8 @@ func (app *application) mount() http.Handler {
 	blogHandler := blog.NewHandler(blogService)
 	lessonHandler := lessons.NewHandler(lessonService)
 	enrollmentHandler := enrollment.NewHandler(enrollmentService)
+	userHandler := users.NewHandler(userService)
+	contactHandler := contact.NewHandler(contactService)
 	notifHandler := notifications.NewHandler(notifService)
 	settingsHandler := settings.NewHandler(settingsService)
 
@@ -130,12 +138,24 @@ func (app *application) mount() http.Handler {
 			r.Delete("/{id}", reviewHandler.Delete)
 		})
 		r.Route("/enrollments", func(r chi.Router) {
+			r.Get("/", enrollmentHandler.GetAll)
 			r.Post("/", enrollmentHandler.Enroll)
 			r.Get("/user/{userID}", enrollmentHandler.GetUserEnrollments)
 			r.Patch("/{id}/progress", enrollmentHandler.UpdateProgress)
 			r.Patch("/{id}/payment", enrollmentHandler.UpdatePaymentStatus)
 			r.Patch("/{id}/complete", enrollmentHandler.Complete)
 			r.Delete("/{id}", enrollmentHandler.Delete)
+		})
+		r.Route("/users", func(r chi.Router) {
+			r.Get("/", userHandler.GetAll)
+			r.Get("/{id}", userHandler.GetOne)
+			r.Patch("/{id}/role", userHandler.AssignRole)
+		})
+		r.Route("/contact", func(r chi.Router) {
+			r.Post("/", contactHandler.Send)
+			r.Get("/", contactHandler.GetAll)
+			r.Patch("/{id}/read", contactHandler.MarkRead)
+			r.Delete("/{id}", contactHandler.Delete)
 		})
 		r.Route("/blog", func(r chi.Router) {
 			r.Get("/categories", blogHandler.GetAllCategories)

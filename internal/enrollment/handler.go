@@ -42,7 +42,24 @@ func (h *handler) Enroll(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	jsonResponse(w, http.StatusCreated, enrollment)
+	jsonResponse(w, http.StatusCreated, map[string]any{
+		"success":    true,
+		"message":    "enrolled successfully",
+		"enrollment": enrollment,
+	})
+}
+
+func (h *handler) GetAll(w http.ResponseWriter, r *http.Request) {
+	enrollments, err := h.service.GetAllEnrollments(r.Context())
+	if err != nil {
+		jsonError(w, "failed to get enrollments", http.StatusInternalServerError)
+		return
+	}
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success":     true,
+		"enrollments": enrollments,
+		"total":       len(enrollments),
+	})
 }
 
 func (h *handler) GetUserEnrollments(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +69,11 @@ func (h *handler) GetUserEnrollments(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to get enrollments", http.StatusInternalServerError)
 		return
 	}
-	jsonResponse(w, http.StatusOK, enrollments)
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success":     true,
+		"enrollments": enrollments,
+		"total":       len(enrollments),
+	})
 }
 
 func (h *handler) GetCourseEnrollments(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +83,11 @@ func (h *handler) GetCourseEnrollments(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to get enrollments", http.StatusInternalServerError)
 		return
 	}
-	jsonResponse(w, http.StatusOK, enrollments)
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success":     true,
+		"enrollments": enrollments,
+		"total":       len(enrollments),
+	})
 }
 
 func (h *handler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +103,10 @@ func (h *handler) UpdateProgress(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	jsonResponse(w, http.StatusOK, map[string]any{"message": "progress updated"})
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "progress updated successfully",
+	})
 }
 
 func (h *handler) UpdatePaymentStatus(w http.ResponseWriter, r *http.Request) {
@@ -90,11 +118,18 @@ func (h *handler) UpdatePaymentStatus(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	if req.Status == "" {
+		jsonError(w, "status is required", http.StatusBadRequest)
+		return
+	}
 	if err := h.service.UpdatePaymentStatus(r.Context(), id, req.Status); err != nil {
 		jsonError(w, "failed to update payment status", http.StatusInternalServerError)
 		return
 	}
-	jsonResponse(w, http.StatusOK, map[string]any{"message": "payment status updated"})
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "payment status updated to " + req.Status,
+	})
 }
 
 func (h *handler) Complete(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +138,10 @@ func (h *handler) Complete(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to complete enrollment", http.StatusInternalServerError)
 		return
 	}
-	jsonResponse(w, http.StatusOK, map[string]any{"message": "course completed"})
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "course marked as completed",
+	})
 }
 
 func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +150,10 @@ func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to delete enrollment", http.StatusInternalServerError)
 		return
 	}
-	jsonResponse(w, http.StatusOK, map[string]any{"message": "enrollment deleted"})
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "enrollment deleted successfully",
+	})
 }
 
 func jsonResponse(w http.ResponseWriter, status int, data any) {
@@ -122,5 +163,8 @@ func jsonResponse(w http.ResponseWriter, status int, data any) {
 }
 
 func jsonError(w http.ResponseWriter, message string, status int) {
-	jsonResponse(w, status, map[string]any{"error": message})
+	jsonResponse(w, status, map[string]any{
+		"success": false,
+		"error":   message,
+	})
 }
