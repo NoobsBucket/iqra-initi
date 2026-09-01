@@ -214,6 +214,51 @@ func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *handler) GoogleAuth(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ProviderID    string `json:"provider_id"`
+		GoogleID      string `json:"google_id"`
+		Email         string `json:"email"`
+		Name          string `json:"name"`
+		FullName      string `json:"full_name"`
+		AvatarURL     string `json:"avatar_url"`
+		EmailVerified bool   `json:"email_verified"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	googleID := req.ProviderID
+	if googleID == "" {
+		googleID = req.GoogleID
+	}
+
+	name := req.Name
+	if name == "" {
+		name = req.FullName
+	}
+
+	if googleID == "" || req.Email == "" {
+		jsonError(w, "provider_id and email are required", http.StatusBadRequest)
+		return
+	}
+
+	user, token, err := h.service.GoogleAuth(r.Context(), googleID, req.Email, name, req.AvatarURL)
+	if err != nil {
+		log.Printf("google auth error: %v", err)
+		jsonError(w, "google authentication failed", http.StatusInternalServerError)
+		return
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"success": true,
+		"user":    user,
+		"token":   token,
+	})
+}
+
 func (h *handler) Logout(w http.ResponseWriter, r *http.Request) {
 	// JWT is stateless — client just deletes the token
 	jsonResponse(w, http.StatusOK, map[string]any{

@@ -24,6 +24,7 @@ var (
 type service interface {
 	RegisterUser(ctx context.Context, name, email, password string) error
 	LoginUser(ctx context.Context, email, password string) (*User, string, error)
+	GoogleAuth(ctx context.Context, googleID, email, name, avatarURL string) (*User, string, error)
 	VerifyOTP(ctx context.Context, email, otp string) (*User, string, error)
 	ResendOTP(ctx context.Context, email string) error
 	ForgotPassword(ctx context.Context, email string) error
@@ -110,6 +111,22 @@ func (s *Service) LoginUser(ctx context.Context, email, password string) (*User,
 	}
 
 	// generate token
+	token, err := s.generateToken(user)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return user, token, nil
+}
+
+func (s *Service) GoogleAuth(ctx context.Context, googleID, email, name, avatarURL string) (*User, string, error) {
+	email = normalizeEmail(email)
+
+	user, err := s.store.GetOrCreateGoogleUser(ctx, googleID, email, name, avatarURL)
+	if err != nil {
+		return nil, "", err
+	}
+
 	token, err := s.generateToken(user)
 	if err != nil {
 		return nil, "", err

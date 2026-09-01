@@ -8,8 +8,8 @@ import (
 	"github.com/NoobsBucket/iqra-initi/internal/auth"
 	"github.com/NoobsBucket/iqra-initi/internal/blog"
 	"github.com/NoobsBucket/iqra-initi/internal/categories"
-	"github.com/NoobsBucket/iqra-initi/internal/courses"
 	"github.com/NoobsBucket/iqra-initi/internal/contact"
+	"github.com/NoobsBucket/iqra-initi/internal/courses"
 	"github.com/NoobsBucket/iqra-initi/internal/enrollment"
 	"github.com/NoobsBucket/iqra-initi/internal/lessons"
 	"github.com/NoobsBucket/iqra-initi/internal/mailer"
@@ -106,6 +106,7 @@ func (app *application) mount() http.Handler {
 			r.Post("/resend-otp", authHandler.ResendOTP)
 			r.Post("/forgot-password", authHandler.ForgotPassword)
 			r.Post("/reset-password", authHandler.ResetPassword)
+			r.Post("/google", authHandler.GoogleAuth)
 		})
 		r.Route("/categories", func(r chi.Router) {
 			r.Get("/", categoryHandler.GetAll)

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -33,6 +35,7 @@ type Store interface {
 	CreateUser(ctx context.Context, name, email, passwordHash string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
+	GetOrCreateGoogleUser(ctx context.Context, googleID, email, name, avatarURL string) (*User, error)
 	SaveOTP(ctx context.Context, userID, otp string, expiresAt time.Time) error
 	VerifyOTP(ctx context.Context, email, otp string) (*User, error)
 	MarkVerified(ctx context.Context, userID string) error
@@ -91,6 +94,77 @@ func (s *store) GetUserByEmail(ctx context.Context, email string) (*User, error)
 	if err != nil {
 		return nil, err
 	}
+	user.SetAvatar()
+	return user, nil
+}
+
+func (s *store) GetOrCreateGoogleUser(ctx context.Context, googleID, email, name, avatarURL string) (*User, error) {
+	email = strings.TrimSpace(strings.ToLower(email))
+	user := &User{}
+
+	err := s.db.QueryRow(ctx, `
+		SELECT id, name, email, role, is_verified, created_at
+		FROM users WHERE google_id = $1
+	`, googleID).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.Role,
+		&user.IsVerified,
+		&user.CreatedAt,
+	)
+	if err == nil {
+		user.SetAvatar()
+		return user, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("find user by google id: %w", err)
+	}
+
+	err = s.db.QueryRow(ctx, `
+		SELECT id, name, email, role, is_verified, created_at
+		FROM users WHERE email = $1
+	`, email).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.Role,
+		&user.IsVerified,
+		&user.CreatedAt,
+	)
+	if err == nil {
+		_, err = s.db.Exec(ctx, `
+			UPDATE users
+			SET google_id = $1, is_verified = TRUE, provider = 'google', avatar_url = $2
+			WHERE id = $3
+		`, googleID, avatarURL, user.ID)
+		if err != nil {
+			return nil, fmt.Errorf("link google user: %w", err)
+		}
+		user.IsVerified = true
+		user.SetAvatar()
+		return user, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, fmt.Errorf("find user by email: %w", err)
+	}
+
+	err = s.db.QueryRow(ctx, `
+		INSERT INTO users (name, email, google_id, avatar_url, is_verified, provider)
+		VALUES ($1, $2, $3, $4, TRUE, 'google')
+		RETURNING id, name, email, role, is_verified, created_at
+	`, name, email, googleID, avatarURL).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Email,
+		&user.Role,
+		&user.IsVerified,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create google user: %w", err)
+	}
+
 	user.SetAvatar()
 	return user, nil
 }
