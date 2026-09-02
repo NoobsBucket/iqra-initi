@@ -46,7 +46,7 @@ func (s *store) Create(ctx context.Context, m *Message) (*Message, error) {
 
 func (s *store) GetAll(ctx context.Context) ([]*Message, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, name, email, phone, subject, message, is_read, created_at
+		SELECT id, name, email, COALESCE(phone, ''), COALESCE(subject, ''), message, is_read, created_at
 		FROM contact_messages ORDER BY created_at DESC
 	`)
 	if err != nil {

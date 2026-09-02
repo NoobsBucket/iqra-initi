@@ -45,11 +45,16 @@ func NewStore(db *pgxpool.Pool) Store {
 func (s *store) Get(ctx context.Context) (*Settings, error) {
 	settings := &Settings{}
 	err := s.db.QueryRow(ctx, `
-		SELECT id, site_name, site_logo, site_favicon, site_email, site_phone, site_address,
-		       navbar_announcement, footer_tagline, footer_copyright,
-		       facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url,
-		       whatsapp_number, linkedin_url, telegram_url,
-		       default_meta_title, default_meta_description
+		SELECT id,
+		       COALESCE(site_name, ''), COALESCE(site_logo, ''), COALESCE(site_favicon, ''),
+		       COALESCE(site_email, ''), COALESCE(site_phone, ''), COALESCE(site_address, ''),
+		       COALESCE(navbar_announcement, ''), COALESCE(footer_tagline, ''),
+		       COALESCE(footer_copyright, ''), COALESCE(facebook_url, ''),
+		       COALESCE(instagram_url, ''), COALESCE(twitter_url, ''),
+		       COALESCE(youtube_url, ''), COALESCE(tiktok_url, ''),
+		       COALESCE(whatsapp_number, ''), COALESCE(linkedin_url, ''),
+		       COALESCE(telegram_url, ''), COALESCE(default_meta_title, ''),
+		       COALESCE(default_meta_description, '')
 		FROM site_settings LIMIT 1
 	`).Scan(
 		&settings.ID, &settings.SiteName, &settings.SiteLogo, &settings.SiteFavicon,
@@ -73,11 +78,16 @@ func (s *store) Update(ctx context.Context, settings *Settings) (*Settings, erro
 		    tiktok_url = $14, whatsapp_number = $15, linkedin_url = $16,
 		    telegram_url = $17, default_meta_title = $18, default_meta_description = $19,
 		    updated_at = NOW()
-		RETURNING id, site_name, site_logo, site_favicon, site_email, site_phone, site_address,
-		          navbar_announcement, footer_tagline, footer_copyright,
-		          facebook_url, instagram_url, twitter_url, youtube_url, tiktok_url,
-		          whatsapp_number, linkedin_url, telegram_url,
-		          default_meta_title, default_meta_description
+		RETURNING id,
+		          COALESCE(site_name, ''), COALESCE(site_logo, ''), COALESCE(site_favicon, ''),
+		          COALESCE(site_email, ''), COALESCE(site_phone, ''), COALESCE(site_address, ''),
+		          COALESCE(navbar_announcement, ''), COALESCE(footer_tagline, ''),
+		          COALESCE(footer_copyright, ''), COALESCE(facebook_url, ''),
+		          COALESCE(instagram_url, ''), COALESCE(twitter_url, ''),
+		          COALESCE(youtube_url, ''), COALESCE(tiktok_url, ''),
+		          COALESCE(whatsapp_number, ''), COALESCE(linkedin_url, ''),
+		          COALESCE(telegram_url, ''), COALESCE(default_meta_title, ''),
+		          COALESCE(default_meta_description, '')
 	`,
 		settings.SiteName, settings.SiteLogo, settings.SiteFavicon, settings.SiteEmail,
 		settings.SitePhone, settings.SiteAddress, settings.NavbarAnnouncement,

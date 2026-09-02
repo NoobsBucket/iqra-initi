@@ -48,8 +48,13 @@ func NewStore(db *pgxpool.Pool) Store {
 
 func (s *store) Create(ctx context.Context, c *Course) (*Course, error) {
 	err := s.db.QueryRow(ctx, `
-		INSERT INTO courses (created_by, title, description, image_url, price, discount_price, currency)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO courses (created_by, title, slug, description, image_url, price, discount_price, currency)
+		VALUES (
+			$1,
+			$2,
+			COALESCE(NULLIF(trim(both '-' from regexp_replace(lower($2), '[^a-z0-9]+', '-', 'g')), ''), 'course') || '-' || substr(md5(random()::text), 1, 8),
+			$3, $4, $5, $6, $7
+		)
 		RETURNING id, created_by, title, description, image_url, price, discount_price, currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
 	`, c.CreatedBy, c.Title, c.Description, c.ImageURL, c.Price, c.DiscountPrice, c.Currency).Scan(
 		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL,
@@ -61,7 +66,7 @@ func (s *store) Create(ctx context.Context, c *Course) (*Course, error) {
 
 func (s *store) GetAll(ctx context.Context) ([]*Course, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, created_by, title, description, image_url, price, discount_price, currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
+		SELECT id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
 		FROM courses ORDER BY created_at DESC
 	`)
 	if err != nil {
@@ -87,7 +92,7 @@ func (s *store) GetAll(ctx context.Context) ([]*Course, error) {
 func (s *store) GetByID(ctx context.Context, id string) (*Course, error) {
 	c := &Course{}
 	err := s.db.QueryRow(ctx, `
-		SELECT id, created_by, title, description, image_url, price, discount_price, currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
+		SELECT id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
 		FROM courses WHERE id = $1
 	`, id).Scan(
 		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL,
@@ -102,7 +107,7 @@ func (s *store) Update(ctx context.Context, c *Course) (*Course, error) {
 		UPDATE courses
 		SET title = $1, description = $2, image_url = $3, price = $4, discount_price = $5, currency = $6, updated_at = NOW()
 		WHERE id = $7
-		RETURNING id, created_by, title, description, image_url, price, discount_price, currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
+		RETURNING id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
 	`, c.Title, c.Description, c.ImageURL, c.Price, c.DiscountPrice, c.Currency, c.ID).Scan(
 		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL,
 		&c.Price, &c.DiscountPrice, &c.Currency, &c.IsPublished, &c.IsFeatured,
