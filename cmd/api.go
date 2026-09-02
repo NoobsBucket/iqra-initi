@@ -29,10 +29,10 @@ import (
 )
 
 type routeRateLimiter struct {
-	mu       sync.Mutex
-	limit    int
-	window   time.Duration
-	requests map[string][]time.Time
+	mu        sync.Mutex
+	limit     int
+	window    time.Duration
+	requests  map[string][]time.Time
 }
 
 func newRouteRateLimiter(limit int, window time.Duration) *routeRateLimiter {
