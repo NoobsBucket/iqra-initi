@@ -51,8 +51,8 @@ func (s *store) Create(ctx context.Context, c *Course) (*Course, error) {
 		INSERT INTO courses (created_by, title, slug, description, image_url, price, discount_price, currency)
 		VALUES (
 			$1,
-			$2,
-			COALESCE(NULLIF(trim(both '-' from regexp_replace(lower($2), '[^a-z0-9]+', '-', 'g')), ''), 'course') || '-' || substr(md5(random()::text), 1, 8),
+			$2::text,
+			COALESCE(NULLIF(trim(both '-' from regexp_replace(lower($2::text), '[^a-z0-9]+', '-', 'g')), ''), 'course') || '-' || substr(md5(random()::text), 1, 8),
 			$3, $4, $5, $6, $7
 		)
 		RETURNING id, created_by, title, description, image_url, price, discount_price, currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
