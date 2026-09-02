@@ -3,6 +3,7 @@ package enrollment
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -52,6 +53,7 @@ func (h *handler) Enroll(w http.ResponseWriter, r *http.Request) {
 func (h *handler) GetAll(w http.ResponseWriter, r *http.Request) {
 	enrollments, err := h.service.GetAllEnrollments(r.Context())
 	if err != nil {
+		log.Printf("get all enrollments error: %v", err)
 		jsonError(w, "failed to get enrollments", http.StatusInternalServerError)
 		return
 	}
@@ -66,6 +68,7 @@ func (h *handler) GetUserEnrollments(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 	enrollments, err := h.service.GetUserEnrollments(r.Context(), userID)
 	if err != nil {
+		log.Printf("get user enrollments error: %v", err)
 		jsonError(w, "failed to get enrollments", http.StatusInternalServerError)
 		return
 	}
@@ -80,6 +83,7 @@ func (h *handler) GetCourseEnrollments(w http.ResponseWriter, r *http.Request) {
 	courseID := chi.URLParam(r, "courseID")
 	enrollments, err := h.service.GetCourseEnrollments(r.Context(), courseID)
 	if err != nil {
+		log.Printf("get course enrollments error: %v", err)
 		jsonError(w, "failed to get enrollments", http.StatusInternalServerError)
 		return
 	}

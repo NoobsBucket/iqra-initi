@@ -48,7 +48,7 @@ func (s *store) Enroll(ctx context.Context, e *Enrollment) (*Enrollment, error) 
 	err := s.db.QueryRow(ctx, `
 		INSERT INTO user_courses (user_id, course_id, full_name, whatsapp, notes, payment_method)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, user_id, course_id, full_name, whatsapp, notes, status, progress, payment_status, payment_method, enrolled_at, completed_at, updated_at
+		RETURNING id, user_id, course_id, full_name, whatsapp, COALESCE(notes, ''), status, progress, payment_status, payment_method, enrolled_at, completed_at, updated_at
 	`, e.UserID, e.CourseID, e.FullName, e.Whatsapp, e.Notes, e.PaymentMethod).Scan(
 		&e.ID, &e.UserID, &e.CourseID, &e.FullName, &e.Whatsapp, &e.Notes,
 		&e.Status, &e.Progress, &e.PaymentStatus, &e.PaymentMethod, &e.EnrolledAt, &e.CompletedAt, &e.UpdatedAt,
@@ -58,7 +58,7 @@ func (s *store) Enroll(ctx context.Context, e *Enrollment) (*Enrollment, error) 
 
 func (s *store) GetAll(ctx context.Context) ([]*Enrollment, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT uc.id, uc.user_id, uc.course_id, uc.full_name, uc.whatsapp, uc.notes,
+		SELECT uc.id, uc.user_id, uc.course_id, uc.full_name, uc.whatsapp, COALESCE(uc.notes, ''),
 		       uc.status, uc.progress, uc.payment_status, uc.payment_method,
 		       uc.enrolled_at, uc.completed_at, uc.updated_at
 		FROM user_courses uc
@@ -86,7 +86,7 @@ func (s *store) GetAll(ctx context.Context) ([]*Enrollment, error) {
 
 func (s *store) GetByUser(ctx context.Context, userID string) ([]*Enrollment, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT uc.id, uc.user_id, uc.course_id, uc.full_name, uc.whatsapp, uc.notes,
+		SELECT uc.id, uc.user_id, uc.course_id, uc.full_name, uc.whatsapp, COALESCE(uc.notes, ''),
 		       uc.status, uc.progress, uc.payment_status, uc.payment_method, uc.enrolled_at, uc.completed_at, uc.updated_at
 		FROM user_courses uc
 		WHERE uc.user_id = $1
@@ -114,7 +114,7 @@ func (s *store) GetByUser(ctx context.Context, userID string) ([]*Enrollment, er
 func (s *store) GetByID(ctx context.Context, id string) (*Enrollment, error) {
 	e := &Enrollment{}
 	err := s.db.QueryRow(ctx, `
-		SELECT id, user_id, course_id, full_name, whatsapp, notes, status, progress, payment_status, payment_method, enrolled_at, completed_at, updated_at
+		SELECT id, user_id, course_id, full_name, whatsapp, COALESCE(notes, ''), status, progress, payment_status, payment_method, enrolled_at, completed_at, updated_at
 		FROM user_courses WHERE id = $1
 	`, id).Scan(
 		&e.ID, &e.UserID, &e.CourseID, &e.FullName, &e.Whatsapp, &e.Notes,
@@ -125,7 +125,7 @@ func (s *store) GetByID(ctx context.Context, id string) (*Enrollment, error) {
 
 func (s *store) GetByCourse(ctx context.Context, courseID string) ([]*Enrollment, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, user_id, course_id, full_name, whatsapp, notes, status, progress, payment_status, payment_method, enrolled_at, completed_at, updated_at
+		SELECT id, user_id, course_id, full_name, whatsapp, COALESCE(notes, ''), status, progress, payment_status, payment_method, enrolled_at, completed_at, updated_at
 		FROM user_courses WHERE course_id = $1
 		ORDER BY enrolled_at DESC
 	`, courseID)
