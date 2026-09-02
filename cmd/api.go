@@ -1,8 +1,13 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/NoobsBucket/iqra-initi/internal/auth"
@@ -23,6 +28,102 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type routeRateLimiter struct {
+	mu       sync.Mutex
+	limit    int
+	window   time.Duration
+	requests map[string][]time.Time
+}
+
+func newRouteRateLimiter(limit int, window time.Duration) *routeRateLimiter {
+	return &routeRateLimiter{
+		limit:    limit,
+		window:   window,
+		requests: make(map[string][]time.Time),
+	}
+}
+
+func (rl *routeRateLimiter) allow(key string) bool {
+	now := time.Now()
+	cutoff := now.Add(-rl.window)
+
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	entries := rl.requests[key]
+	filtered := entries[:0]
+	for _, ts := range entries {
+		if ts.After(cutoff) {
+			filtered = append(filtered, ts)
+		}
+	}
+
+	if len(filtered) >= rl.limit {
+		rl.requests[key] = filtered
+		return false
+	}
+
+	filtered = append(filtered, now)
+	rl.requests[key] = filtered
+	return true
+}
+
+func hashString(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
+}
+
+func extractIP(r *http.Request) string {
+	for _, header := range []string{"X-Forwarded-For", "X-Real-IP", "CF-Connecting-IP", "X-Client-IP"} {
+		if value := strings.TrimSpace(r.Header.Get(header)); value != "" {
+			return strings.Split(value, ",")[0]
+		}
+	}
+	return strings.TrimSpace(r.RemoteAddr)
+}
+
+func extractBrowserID(r *http.Request) string {
+	if value := strings.TrimSpace(r.Header.Get("X-Browser-ID")); value != "" {
+		return value
+	}
+	return hashString(r.UserAgent())
+}
+
+func extractDeviceFingerprint(r *http.Request) string {
+	if value := strings.TrimSpace(r.Header.Get("X-Device-Fingerprint")); value != "" {
+		return value
+	}
+	raw := strings.Join([]string{
+		r.UserAgent(),
+		r.Header.Get("Accept-Language"),
+		r.Header.Get("Accept-Encoding"),
+		r.Header.Get("Sec-CH-UA"),
+	}, "|")
+	return hashString(raw)
+}
+
+func rateLimitMiddleware(limit int, window time.Duration) func(http.Handler) http.Handler {
+	limiter := newRouteRateLimiter(limit, window)
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := extractIP(r)
+			browserID := extractBrowserID(r)
+			deviceFingerprint := extractDeviceFingerprint(r)
+			key := fmt.Sprintf("%s|%s|%s|%s|%s", r.Method, r.URL.Path, ip, browserID, deviceFingerprint)
+
+			if !limiter.allow(key) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(`{"error":"rate limit exceeded"}`))
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
 
@@ -31,6 +132,7 @@ func (app *application) mount() http.Handler {
 	r.Use(middleware.ClientIPFromRemoteAddr) // pick one ClientIPFrom* based on your infra, see below
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(rateLimitMiddleware(60, time.Minute))
 	// Set a timeout value on the request context (ctx), that will signal
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
