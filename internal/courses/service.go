@@ -8,10 +8,10 @@ import (
 var ErrNotFound = errors.New("course not found")
 
 type service interface {
-	CreateCourse(ctx context.Context, createdBy, title, description, imageURL, currency string, price, discountPrice float64, categoryIDs []string) (*Course, error)
+	CreateCourse(ctx context.Context, createdBy, title, description, imageURL, currency, metaTitle, metaDescription, metaKeywords string, price, discountPrice float64, categoryIDs []string) (*Course, error)
 	GetCourses(ctx context.Context) ([]*Course, error)
 	GetCourse(ctx context.Context, id string) (*Course, error)
-	UpdateCourse(ctx context.Context, id, title, description, imageURL, currency string, price, discountPrice float64) (*Course, error)
+	UpdateCourse(ctx context.Context, id, title, description, imageURL, currency, metaTitle, metaDescription, metaKeywords string, price, discountPrice float64) (*Course, error)
 	DeleteCourse(ctx context.Context, id string) error
 	PublishCourse(ctx context.Context, id string) error
 }
@@ -24,15 +24,18 @@ func NewService(store Store) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) CreateCourse(ctx context.Context, createdBy, title, description, imageURL, currency string, price, discountPrice float64, categoryIDs []string) (*Course, error) {
+func (s *Service) CreateCourse(ctx context.Context, createdBy, title, description, imageURL, currency, metaTitle, metaDescription, metaKeywords string, price, discountPrice float64, categoryIDs []string) (*Course, error) {
 	course := &Course{
-		CreatedBy:     createdBy,
-		Title:         title,
-		Description:   description,
-		ImageURL:      imageURL,
-		Price:         price,
-		DiscountPrice: discountPrice,
-		Currency:      currency,
+		CreatedBy:       createdBy,
+		Title:           title,
+		Description:     description,
+		ImageURL:        imageURL,
+		MetaTitle:       metaTitle,
+		MetaDescription: metaDescription,
+		MetaKeywords:    metaKeywords,
+		Price:           price,
+		DiscountPrice:   discountPrice,
+		Currency:        currency,
 	}
 	created, err := s.store.Create(ctx, course)
 	if err != nil {
@@ -67,15 +70,18 @@ func (s *Service) GetCourse(ctx context.Context, id string) (*Course, error) {
 	return c, nil
 }
 
-func (s *Service) UpdateCourse(ctx context.Context, id, title, description, imageURL, currency string, price, discountPrice float64) (*Course, error) {
+func (s *Service) UpdateCourse(ctx context.Context, id, title, description, imageURL, currency, metaTitle, metaDescription, metaKeywords string, price, discountPrice float64) (*Course, error) {
 	course := &Course{
-		ID:            id,
-		Title:         title,
-		Description:   description,
-		ImageURL:      imageURL,
-		Price:         price,
-		DiscountPrice: discountPrice,
-		Currency:      currency,
+		ID:              id,
+		Title:           title,
+		Description:     description,
+		ImageURL:        imageURL,
+		MetaTitle:       metaTitle,
+		MetaDescription: metaDescription,
+		MetaKeywords:    metaKeywords,
+		Price:           price,
+		DiscountPrice:   discountPrice,
+		Currency:        currency,
 	}
 	return s.store.Update(ctx, course)
 }

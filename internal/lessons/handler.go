@@ -3,6 +3,7 @@ package lessons
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -46,6 +47,10 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "title is required", http.StatusBadRequest)
 		return
 	}
+	if !validThumbnailURL(req.ThumbnailURL) {
+		jsonError(w, "thumbnail_url must be a valid HTTP or HTTPS URL", http.StatusBadRequest)
+		return
+	}
 	req.CourseID = courseID
 	lesson, err := h.service.CreateLesson(r.Context(), &req)
 	if err != nil {
@@ -60,6 +65,10 @@ func (h *handler) Update(w http.ResponseWriter, r *http.Request) {
 	var req Lesson
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if !validThumbnailURL(req.ThumbnailURL) {
+		jsonError(w, "thumbnail_url must be a valid HTTP or HTTPS URL", http.StatusBadRequest)
 		return
 	}
 	req.ID = id
@@ -104,4 +113,12 @@ func jsonResponse(w http.ResponseWriter, status int, data any) {
 
 func jsonError(w http.ResponseWriter, message string, status int) {
 	jsonResponse(w, status, map[string]any{"error": message})
+}
+
+func validThumbnailURL(value *string) bool {
+	if value == nil || *value == "" {
+		return true
+	}
+	parsed, err := url.Parse(*value)
+	return err == nil && parsed.Hostname() != "" && (parsed.Scheme == "http" || parsed.Scheme == "https")
 }

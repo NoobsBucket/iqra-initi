@@ -8,22 +8,25 @@ import (
 )
 
 type Course struct {
-	ID            string    `json:"id"`
-	CreatedBy     string    `json:"created_by"`
-	Title         string    `json:"title"`
-	Description   string    `json:"description"`
-	ImageURL      string    `json:"image_url"`
-	Price         float64   `json:"price"`
-	DiscountPrice float64   `json:"discount_price"`
-	Currency      string    `json:"currency"`
-	IsPublished   bool      `json:"is_published"`
-	IsFeatured    bool      `json:"is_featured"`
-	AverageRating float64   `json:"average_rating"`
-	TotalReviews  int       `json:"total_reviews"`
-	TotalStudents int       `json:"total_students"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	CategoryIDs   []string  `json:"category_ids,omitempty"`
+	ID              string    `json:"id"`
+	CreatedBy       string    `json:"created_by"`
+	Title           string    `json:"title"`
+	Description     string    `json:"description"`
+	ImageURL        string    `json:"image_url"`
+	MetaTitle       string    `json:"meta_title"`
+	MetaDescription string    `json:"meta_description"`
+	MetaKeywords    string    `json:"meta_keywords"`
+	Price           float64   `json:"price"`
+	DiscountPrice   float64   `json:"discount_price"`
+	Currency        string    `json:"currency"`
+	IsPublished     bool      `json:"is_published"`
+	IsFeatured      bool      `json:"is_featured"`
+	AverageRating   float64   `json:"average_rating"`
+	TotalReviews    int       `json:"total_reviews"`
+	TotalStudents   int       `json:"total_students"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+	CategoryIDs     []string  `json:"category_ids,omitempty"`
 }
 
 type Store interface {
@@ -48,16 +51,16 @@ func NewStore(db *pgxpool.Pool) Store {
 
 func (s *store) Create(ctx context.Context, c *Course) (*Course, error) {
 	err := s.db.QueryRow(ctx, `
-		INSERT INTO courses (created_by, title, slug, description, image_url, price, discount_price, currency)
+		INSERT INTO courses (created_by, title, slug, description, image_url, meta_title, meta_description, meta_keywords, price, discount_price, currency)
 		VALUES (
 			$1,
 			$2::text,
 			COALESCE(NULLIF(trim(both '-' from regexp_replace(lower($2::text), '[^a-z0-9]+', '-', 'g')), ''), 'course') || '-' || substr(md5(random()::text), 1, 8),
-			$3, $4, $5, $6, $7
+			$3, $4, $5, $6, $7, $8, $9, $10
 		)
-		RETURNING id, created_by, title, description, image_url, price, discount_price, currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
-	`, c.CreatedBy, c.Title, c.Description, c.ImageURL, c.Price, c.DiscountPrice, c.Currency).Scan(
-		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL,
+		RETURNING id, created_by, title, description, image_url, COALESCE(meta_title, ''), COALESCE(meta_description, ''), COALESCE(meta_keywords, ''), price, discount_price, currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
+	`, c.CreatedBy, c.Title, c.Description, c.ImageURL, c.MetaTitle, c.MetaDescription, c.MetaKeywords, c.Price, c.DiscountPrice, c.Currency).Scan(
+		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL, &c.MetaTitle, &c.MetaDescription, &c.MetaKeywords,
 		&c.Price, &c.DiscountPrice, &c.Currency, &c.IsPublished, &c.IsFeatured,
 		&c.AverageRating, &c.TotalReviews, &c.TotalStudents, &c.CreatedAt, &c.UpdatedAt,
 	)
@@ -66,7 +69,7 @@ func (s *store) Create(ctx context.Context, c *Course) (*Course, error) {
 
 func (s *store) GetAll(ctx context.Context) ([]*Course, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
+		SELECT id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), COALESCE(meta_title, ''), COALESCE(meta_description, ''), COALESCE(meta_keywords, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
 		FROM courses ORDER BY created_at DESC
 	`)
 	if err != nil {
@@ -78,7 +81,7 @@ func (s *store) GetAll(ctx context.Context) ([]*Course, error) {
 	for rows.Next() {
 		c := &Course{}
 		if err := rows.Scan(
-			&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL,
+			&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL, &c.MetaTitle, &c.MetaDescription, &c.MetaKeywords,
 			&c.Price, &c.DiscountPrice, &c.Currency, &c.IsPublished, &c.IsFeatured,
 			&c.AverageRating, &c.TotalReviews, &c.TotalStudents, &c.CreatedAt, &c.UpdatedAt,
 		); err != nil {
@@ -92,10 +95,10 @@ func (s *store) GetAll(ctx context.Context) ([]*Course, error) {
 func (s *store) GetByID(ctx context.Context, id string) (*Course, error) {
 	c := &Course{}
 	err := s.db.QueryRow(ctx, `
-		SELECT id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
+		SELECT id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), COALESCE(meta_title, ''), COALESCE(meta_description, ''), COALESCE(meta_keywords, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
 		FROM courses WHERE id = $1
 	`, id).Scan(
-		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL,
+		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL, &c.MetaTitle, &c.MetaDescription, &c.MetaKeywords,
 		&c.Price, &c.DiscountPrice, &c.Currency, &c.IsPublished, &c.IsFeatured,
 		&c.AverageRating, &c.TotalReviews, &c.TotalStudents, &c.CreatedAt, &c.UpdatedAt,
 	)
@@ -105,11 +108,11 @@ func (s *store) GetByID(ctx context.Context, id string) (*Course, error) {
 func (s *store) Update(ctx context.Context, c *Course) (*Course, error) {
 	err := s.db.QueryRow(ctx, `
 		UPDATE courses
-		SET title = $1, description = $2, image_url = $3, price = $4, discount_price = $5, currency = $6, updated_at = NOW()
-		WHERE id = $7
-		RETURNING id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
-	`, c.Title, c.Description, c.ImageURL, c.Price, c.DiscountPrice, c.Currency, c.ID).Scan(
-		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL,
+		SET title = $1, description = $2, image_url = $3, meta_title = $4, meta_description = $5, meta_keywords = $6, price = $7, discount_price = $8, currency = $9, updated_at = NOW()
+		WHERE id = $10
+		RETURNING id, COALESCE(created_by::text, ''), title, COALESCE(description, ''), COALESCE(image_url, ''), COALESCE(meta_title, ''), COALESCE(meta_description, ''), COALESCE(meta_keywords, ''), price, COALESCE(discount_price, 0), currency, is_published, is_featured, average_rating, total_reviews, total_students, created_at, updated_at
+	`, c.Title, c.Description, c.ImageURL, c.MetaTitle, c.MetaDescription, c.MetaKeywords, c.Price, c.DiscountPrice, c.Currency, c.ID).Scan(
+		&c.ID, &c.CreatedBy, &c.Title, &c.Description, &c.ImageURL, &c.MetaTitle, &c.MetaDescription, &c.MetaKeywords,
 		&c.Price, &c.DiscountPrice, &c.Currency, &c.IsPublished, &c.IsFeatured,
 		&c.AverageRating, &c.TotalReviews, &c.TotalStudents, &c.CreatedAt, &c.UpdatedAt,
 	)

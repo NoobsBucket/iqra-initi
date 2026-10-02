@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/NoobsBucket/iqra-initi/internal/revalidation"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -53,6 +54,7 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to create post", http.StatusInternalServerError)
 		return
 	}
+	revalidation.NotifySEO()
 	jsonResponse(w, http.StatusCreated, created)
 }
 func (h *handler) Update(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +69,7 @@ func (h *handler) Update(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to update post", http.StatusInternalServerError)
 		return
 	}
+	revalidation.NotifySEO()
 	jsonResponse(w, http.StatusOK, updated)
 }
 func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +77,7 @@ func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to delete post", http.StatusInternalServerError)
 		return
 	}
+	revalidation.NotifySEO()
 	jsonResponse(w, http.StatusOK, map[string]any{"message": "post deleted"})
 }
 func (h *handler) Publish(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +85,7 @@ func (h *handler) Publish(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "failed to publish post", http.StatusInternalServerError)
 		return
 	}
+	revalidation.NotifySEO()
 	jsonResponse(w, http.StatusOK, map[string]any{"message": "post published"})
 }
 

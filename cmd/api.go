@@ -21,7 +21,9 @@ import (
 	"github.com/NoobsBucket/iqra-initi/internal/notifications"
 	"github.com/NoobsBucket/iqra-initi/internal/products"
 	"github.com/NoobsBucket/iqra-initi/internal/reviews"
+	"github.com/NoobsBucket/iqra-initi/internal/seo"
 	"github.com/NoobsBucket/iqra-initi/internal/settings"
+	"github.com/NoobsBucket/iqra-initi/internal/uploads"
 	"github.com/NoobsBucket/iqra-initi/internal/users"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -29,10 +31,10 @@ import (
 )
 
 type routeRateLimiter struct {
-	mu        sync.Mutex
-	limit     int
-	window    time.Duration
-	requests  map[string][]time.Time
+	mu       sync.Mutex
+	limit    int
+	window   time.Duration
+	requests map[string][]time.Time
 }
 
 func newRouteRateLimiter(limit int, window time.Duration) *routeRateLimiter {
@@ -167,6 +169,7 @@ func (app *application) mount() http.Handler {
 	contactStore := contact.NewStore(app.db)
 	notifStore := notifications.NewStore(app.db)
 	settingsStore := settings.NewStore(app.db)
+	seoStore := seo.NewStore(app.db)
 
 	// services
 	productsService := products.NewService()
@@ -182,6 +185,7 @@ func (app *application) mount() http.Handler {
 	contactService := contact.NewService(contactStore)
 	notifService := notifications.NewService(notifStore)
 	settingsService := settings.NewService(settingsStore)
+	seoService := seo.NewService(seoStore)
 
 	// handlers
 	authHandler := auth.NewHandler(authService)
@@ -195,6 +199,8 @@ func (app *application) mount() http.Handler {
 	contactHandler := contact.NewHandler(contactService)
 	notifHandler := notifications.NewHandler(notifService)
 	settingsHandler := settings.NewHandler(settingsService)
+	seoHandler := seo.NewHandler(seoService)
+	uploadHandler := uploads.NewHandler(uploads.ConfigFromEnv())
 
 	// routes
 	r.Get("/products", productsHandler.GetProducts)
@@ -284,6 +290,18 @@ func (app *application) mount() http.Handler {
 		r.Route("/settings", func(r chi.Router) {
 			r.Get("/", settingsHandler.Get)
 			r.Patch("/", settingsHandler.Update)
+		})
+	})
+	r.Route("/api", func(r chi.Router) {
+		r.Use(apiCORSMiddleware)
+		r.Get("/seo", seoHandler.GetPublic)
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(app.adminOnly)
+			r.Get("/seo", seoHandler.List)
+			r.Post("/seo", seoHandler.Create)
+			r.Put("/seo/{id}", seoHandler.Update)
+			r.Delete("/seo/{id}", seoHandler.Delete)
+			r.Post("/uploads/presign", uploadHandler.Presign)
 		})
 	})
 
