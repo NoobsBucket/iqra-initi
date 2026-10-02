@@ -296,7 +296,6 @@ func (app *application) mount() http.Handler {
 		r.Use(apiCORSMiddleware)
 		r.Get("/seo", seoHandler.GetPublic)
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(app.adminOnly)
 			r.Get("/seo", seoHandler.List)
 			r.Post("/seo", seoHandler.Create)
 			r.Put("/seo/{id}", seoHandler.Update)

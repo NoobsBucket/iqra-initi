@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/NoobsBucket/iqra-initi/internal/auth"
 	"github.com/NoobsBucket/iqra-initi/internal/revalidation"
 	"github.com/go-chi/chi/v5"
 )
@@ -54,7 +53,6 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	page.UpdatedBy = auth.UserIDFromContext(r.Context())
 	created, err := h.service.CreatePage(r.Context(), &page)
 	if errors.Is(err, ErrDuplicate) {
 		writeError(w, "page_path already exists", http.StatusConflict)
@@ -79,7 +77,6 @@ func (h *handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page.ID = chi.URLParam(r, "id")
-	page.UpdatedBy = auth.UserIDFromContext(r.Context())
 	updated, err := h.service.UpdatePage(r.Context(), &page)
 	if errors.Is(err, ErrDuplicate) {
 		writeError(w, "page_path already exists", http.StatusConflict)

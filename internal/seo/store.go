@@ -92,7 +92,7 @@ func (s *store) Create(ctx context.Context, page *Page) (*Page, error) {
 			id, created_at, updated_at
 		) VALUES (
 			$1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''),
-			NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), $10, $11, $12::uuid,
+			NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''), NULLIF($9, ''), $10, $11, NULLIF($12, '')::uuid,
 			gen_random_uuid(), NOW(), NOW()
 		)
 		RETURNING `+pageColumns,
@@ -110,7 +110,7 @@ func (s *store) Update(ctx context.Context, page *Page) (*Page, error) {
 			meta_description = NULLIF($4, ''), meta_keywords = NULLIF($5, ''),
 			og_title = NULLIF($6, ''), og_description = NULLIF($7, ''),
 			og_image = NULLIF($8, ''), canonical_url = NULLIF($9, ''),
-			robots = $10, json_ld = $11, updated_by = $12::uuid, updated_at = NOW()
+			robots = $10, json_ld = $11, updated_by = NULLIF($12, '')::uuid, updated_at = NOW()
 		WHERE id = $13
 		RETURNING `+pageColumns,
 		page.PagePath, page.PageName, page.MetaTitle, page.MetaDescription, page.MetaKeywords,
